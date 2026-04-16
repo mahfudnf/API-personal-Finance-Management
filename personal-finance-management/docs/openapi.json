@@ -1,0 +1,1765 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "RESTful API Personal Finance Management",
+    "description": "OpenAPI for Personal Finance Management, with the following features:\n1. User Management\n2. User Income\n3. User Expenses\n3. User Savings\n4. Personal Finance User Dashboard",
+    "version": "1.0",
+    "contact": {
+      "name": "Mahfudz Nur Fadhila",
+      "email": "mahfudnf63@gmail.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080/api"
+    }
+  ],
+  "paths": {
+    "/users/register" : {
+      "post": {
+        "tags": ["user"],
+        "summary": "Register user",
+        "description": "Register new user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json" : {
+              "schema": {
+                "type": "object",
+                "required": ["name","email","password"],
+                "properties": {
+                  "name" : {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "example": "joko"
+                  },
+                  "email" : {
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "example": "joko@email.com"
+                  },
+                  "password" : {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "example": "abc123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200" : {
+            "description": "Register success",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseDataOk"
+                }
+              }
+            }
+          },
+          "400" : {
+            "description": "Register failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                },
+                "example": {
+                  "errors" : "name already registered"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/login" : {
+      "post": {
+        "tags": ["user"],
+        "summary": "Login user",
+        "description": "Registered user login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json" : {
+              "schema": {
+                "type": "object",
+                "required": ["email","password"],
+                "properties": {
+                  "email" : {
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "example": "joko@email.com"
+                  },
+                  "password" : {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "example": "abc123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200" : {
+            "description": "Login success",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data" : {
+                      "type": "object",
+                      "properties": {
+                        "token" : {
+                          "type": "string",
+                          "example": "Bearer <TOKEN>"
+                        },
+                        "expiredAt" : {
+                          "type": "string",
+                          "example": "145567727"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400" : {
+            "description": "Login failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                },
+                "example": {
+                  "errors" : "name or password wrong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/current" : {
+      "get": {
+        "tags": ["user"],
+        "summary": "Get user",
+        "description": "Get the currently logged in user",
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "responses": {
+          "200" : {
+            "description": "Get user success",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseDataGetUser"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Get user failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["user"],
+        "summary": "Edit user",
+        "description": "Edit the currently logged in user",
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json" : {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name" : {
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "example": "asep"
+                  },
+                  "password" : {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "example": "xyz456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200" : {
+            "description": "Update user success",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseDataGetUser"
+                },
+                "example": {
+                  "name" : "asep",
+                  "email" : "joko@email.com"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Edit user failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/logout" : {
+      "post": {
+        "tags": ["user"],
+        "summary": "Logout user",
+        "description": "Logout the currently logged in user",
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "responses": {
+          "200" : {
+            "description": "Logout success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseDataOk"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/incomes" : {
+      "post": {
+        "tags": ["income"],
+        "summary": "Create income",
+        "description": "Create new income",
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json" : {
+              "schema": {
+                "type": "object",
+                "required": ["amount","category"],
+                "properties": {
+                  "amount" : {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "example": 100000
+                  },
+                  "category" : {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "example": "gaji"
+                  },
+                  "description" : {
+                    "type": "string",
+                    "maxLength": 500,
+                    "example": "pendapatan gaji bulan juni"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200" : {
+            "description": "Create income success",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseCreateIncomeSuccess"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Create income failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["income"],
+        "summary": "List incomes",
+        "description": "Retrieve data according to the query parameters entered by the user",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "responses": {
+          "200" : {
+            "description": "Success get list incomes",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseListIncome"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Get list incomes failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/incomes/{incomeId}" : {
+      "get": {
+        "tags": ["income"],
+        "summary": "Get income",
+        "description": "Retrieving income based on income id in path variable",
+        "parameters": [
+          {
+            "name": "incomeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "responses": {
+          "200" : {
+            "description": "Get income success",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseCreateIncomeSuccess"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description": "Get income not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                },
+                "example": {
+                  "errors" : "Income not found"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Get income failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["income"],
+        "summary": "Edit income",
+        "description": "Edit income based on income id in path variable",
+        "parameters": [
+          {
+            "name": "incomeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json" : {
+              "schema": {
+                "properties": {
+                  "amount" : {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "example": 200000
+                  },
+                  "category" : {
+                    "type": "string",
+                    "maxLength": 100,
+                    "example": "freelance"
+                  },
+                  "description" : {
+                    "type": "string",
+                    "maxLength": 500,
+                    "example": "gaji dari edit video"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200" : {
+            "description": "Edit income success",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseCreateIncomeSuccess"
+                },
+                "example": {
+                  "data" : {
+                    "id": "1231313",
+                    "amount": 200000,
+                    "category": "freelance",
+                    "createdAt": "2026-02-23",
+                    "description": "gaji dari edit video"
+                  }
+                }
+              }
+            }
+          },
+          "404" : {
+            "description": "Get income not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                },
+                "example": {
+                  "errors" : "Income not found"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Edit income failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["income"],
+        "summary": "Delete income",
+        "description": "Delete income based on income id in path variable",
+        "parameters": [
+          {
+            "name": "incomeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "responses": {
+          "200" : {
+            "description": "Delete income success",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseDataOk"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description": "Get income not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                },
+                "example": {
+                  "errors" : "Income not found"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Delete income failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/expenses" : {
+      "post": {
+        "tags": ["expense"],
+        "summary": "Create expense",
+        "description": "Create new expense",
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json" : {
+              "schema": {
+                "type": "object",
+                "required": ["amount","category"],
+                "properties": {
+                  "amount" : {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "example": 50000
+                  },
+                  "category" : {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "example": "transport"
+                  },
+                  "description" : {
+                    "type": "string",
+                    "maxLength": 500,
+                    "example": "pengeluaran transport"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200" : {
+            "description": "Create expense success",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseCreateIncomeSuccess"
+                },
+                "example": {
+                  "data" : {
+                    "id": "11334555",
+                    "amount": 50000,
+                    "category": "transport",
+                    "createdAt": "2026-02-25",
+                    "description": "pengeluaran transport"
+                  }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Create expense failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["expense"],
+        "summary": "List expenses",
+        "description": "Retrieve data according to the query parameters entered by the user",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "responses": {
+          "200" : {
+            "description": "Success get List expenses",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseListIncome"
+                },
+                "example": {
+                  "data" :[
+                    {
+                      "id": "11334555",
+                      "amount": 50000,
+                      "category": "transport",
+                      "createdAt": "2026-02-25",
+                      "description": "pengeluaran transport"
+                    }
+                  ],
+                "paging" : {
+                  "currentPage" : 0,
+                  "totalPages" : 10,
+                  "size" : 10
+                }
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Get list expenses failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/expenses/{expenseId}" : {
+      "get": {
+        "tags": ["expense"],
+        "summary": "Get expense",
+        "description": "Retrieve expense based on id",
+        "parameters": [
+          {
+            "name": "expenseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "responses": {
+          "200" : {
+            "description": "Get expense success",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseCreateIncomeSuccess"
+                },
+                "example": {
+                  "data" : {
+                    "id": "11334555",
+                    "amount": 50000,
+                    "category": "transport",
+                    "createdAt": "2026-02-25",
+                    "description": "pengeluaran transport"
+                  }
+                }
+              }
+            }
+          },
+          "404" : {
+            "description": "Get expense not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                },
+                "example": {
+                  "errors" : "Expense not found"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Get expense failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["expense"],
+        "summary": "Edit expense",
+        "description": "Edit expenses based on income id in path variable",
+        "parameters": [
+          {
+            "name": "expenseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json" : {
+              "schema": {
+                "properties": {
+                  "amount" : {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "example": 70000
+                  },
+                  "category" : {
+                    "type": "string",
+                    "maxLength": 100,
+                    "example": "listrik"
+                  },
+                  "description" : {
+                    "type": "string",
+                    "maxLength": 500,
+                    "example": "pengeluaran bayar listrik"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200" : {
+            "description": "Edit expense success",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseCreateIncomeSuccess"
+                },
+                "example": {
+                  "data" : {
+                    "id": "11334555",
+                    "amount": 70000,
+                    "category": "listrik",
+                    "createdAt": "2026-02-25",
+                    "description": "pengeluaran bayar listrik"
+                  }
+                }
+              }
+            }
+          },
+          "404" : {
+            "description": "Get expense not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                },
+                "example": {
+                  "errors" : "Expense not found"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Edit expense failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["expense"],
+        "summary": "Delete expense",
+        "description": "Delete expenses based on income id in path variable",
+        "parameters": [
+          {
+            "name": "expenseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "responses": {
+          "200" : {
+            "description": "Delete expense success",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseDataOk"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description": "Delete expense not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                },
+                "example": {
+                  "errors" : "Expense not found"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Delete expense failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/savings" : {
+      "post": {
+        "tags": ["saving"],
+        "summary": "Create saving",
+        "description": "Create new saving",
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json" : {
+              "schema": {
+                "type": "object",
+                "required": ["nameSaving","targetAmount"],
+                "properties": {
+                  "nameSaving" : {
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "example": "beli motor"
+                  },
+                  "targetAmount" : {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "example": 3000000
+                  },
+                  "deadline" : {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2026-05-20"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200" : {
+            "description": "Create saving success",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseCreateSavingSuccess"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Create saving failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["saving"],
+        "summary": "List savings",
+        "description": "Retrieve data according to the query parameters entered by the user",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "responses": {
+          "200" : {
+            "description": "Success get list savings",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseListSaving"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Get list savings failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      }
+
+    },
+    "/savings/{savingId}" : {
+      "get": {
+        "tags": ["saving"],
+        "summary": "Get saving",
+        "description": "Retrieving income based on income id in path variable",
+        "parameters": [
+          {
+            "name": "savingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "responses": {
+          "200" : {
+            "description": "Get saving success",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseCreateSavingSuccess"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description": "Get saving not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                },
+                "example": {
+                  "errors" : "Saving not found"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Get saving failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": ["saving"],
+        "summary": "Edit saving",
+        "description": "Edit income based on income id in path variable",
+        "parameters": [
+          {
+            "name": "savingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json" : {
+              "schema": {
+                "properties": {
+                  "nameSaving" : {
+                    "type": "string",
+                    "maxLength": 200,
+                    "minLength": 1,
+                    "example": "beli handphone"
+                  },
+                  "targetAmount" : {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "example": 2000000
+                  },
+                  "deadline" : {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2026-05-20"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200" : {
+            "description": "Edit saving success",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseCreateSavingSuccess"
+                },
+                "example": {
+                  "data" : {
+                    "savingId" : "14556663",
+                    "nameSaving" : "beli handphone",
+                    "targetAmount" : 2000000,
+                    "deadline" :"2026-05-20",
+                    "createAt" : "2026-01-03"
+                  }
+                }
+              }
+            }
+          },
+          "404" : {
+            "description": "Edit saving not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                },
+                "example": {
+                  "errors" : "Saving not found"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Edit saving failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["saving"],
+        "summary": "Delete saving",
+        "description": "Delete income based on income id in path variable",
+        "parameters": [
+          {
+            "name": "savingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "responses": {
+          "200" : {
+            "description": "Delete saving success",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseDataOk"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description": "Delete saving not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                },
+                "example": {
+                  "errors" : "Saving not found"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Delete saving failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      }
+  },
+    "/saving/{savingId}/saving_transaction" : {
+      "post": {
+        "tags": ["saving"],
+        "summary": "Saving transaction",
+        "description": "conducting a savings transaction",
+        "parameters": [
+          {
+            "name": "savingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json" : {
+              "schema": {
+                "type": "object",
+                "required": ["amount"],
+                "properties": {
+                  "amount" : {
+                    "type": "integer",
+                    "format": "int64",
+                    "minimum": 0,
+                    "example": 1000000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saving transaction success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseDataOk"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Get saving not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                },
+                "example": {
+                  "errors": "Saving not found"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Saving transaction failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/savings/{savingId}/saving_transaction/progress" : {
+      "get": {
+        "tags": ["saving"],
+        "summary": "Get saving progress",
+        "description": "retrieving savings progress data",
+        "parameters": [
+          {
+            "name": "savingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "responses": {
+          "200" : {
+            "description": "Get saving progress success",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseGetSavingProgress"
+                }
+              }
+            }
+          },
+          "404" : {
+            "description": "Get saving not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                },
+                "example": {
+                  "errors" : "Saving not found"
+                }
+              }
+            }
+          },
+          "401" : {
+            "description": "Get saving progress failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/responseUnauthorized"
+                }
+              }
+            }
+          }
+        }
+      }
+  },
+    "/dashboard" : {
+      "get": {
+        "tags": ["dashboard"],
+        "summary": "Get user finance",
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "responses": {
+          "200" : {
+            "description": "Get user finance,User's real-time financial results in graphical form",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseGetUserFinance"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dashboard/savings/saving_transaction/progress" : {
+      "get": {
+        "tags": ["dashboard"],
+        "summary": "Get user saving progress",
+        "security": [
+          {
+            "bearerAuth" : []
+          }
+        ],
+        "responses": {
+          "200" : {
+            "description": "Get user saving progress,Real time summation results of the saving process in graphical form",
+            "content": {
+              "application/json" : {
+                "schema": {
+                  "$ref": "#/components/schemas/responseGetUserSavingProgress"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+
+  "components": {
+    "securitySchemes": {
+      "bearerAuth" : {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "responseDataOk" : {
+        "type": "object",
+        "properties": {
+          "data" : {
+            "type": "string",
+            "example": "OK"
+          }
+        }
+      },
+      "responseDataGetUser" : {
+        "type": "object",
+        "properties": {
+          "data" : {
+            "type": "object",
+            "properties": {
+              "name" : {
+                "type": "string",
+                "example": "joko"
+              },
+              "email" : {
+                "type": "string",
+                "example": "joko@email.com"
+              }
+            }
+          }
+        }
+      },
+      "responseUnauthorized" : {
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "string",
+            "example": "Unauthorized"
+          }
+        }
+      },
+      "responseCreateIncomeSuccess" : {
+        "type": "object",
+        "properties": {
+          "data" : {
+            "type": "object",
+            "properties": {
+              "incomeId" : {
+                "type": "string",
+                "example": "1231313"
+              },
+              "amount" : {
+                "type": "integer",
+                "format": "int64",
+                "example": 100000
+              },
+              "category" : {
+                "type": "string",
+                "example": "gaji"
+              },
+              "createdAt" : {
+                "type": "string",
+                "format": "date",
+                "example": "2026-02-23"
+              },
+              "description" : {
+                "type": "string",
+                "example": "pendapatan gaji bulan juni"
+              }
+            }
+          }
+        }
+      },
+      "paging" : {
+        "type": "object",
+        "properties": {
+          "currentPage" : {
+            "type": "integer",
+            "example": 0
+          },
+          "totalPages" : {
+            "type": "integer",
+            "example": 10
+          },
+          "size" : {
+            "type": "integer",
+            "example": 10
+          }
+        }
+      },
+      "responseListIncome" : {
+        "type": "object",
+        "properties": {
+          "data" : {
+            "type": "array",
+            "items": {
+              "properties": {
+                "incomeId" : {
+                  "type": "string",
+                  "example": "1231313"
+                },
+                "amount" : {
+                  "type": "integer",
+                  "format": "int64",
+                  "example": 100000
+                },
+                "category" : {
+                  "type": "string",
+                  "example": "gaji"
+                },
+                "createdAt" : {
+                  "type": "string",
+                  "format": "date",
+                  "example": "2026-02-23"
+                },
+                "description" : {
+                  "type": "string",
+                  "example": "pendapatan gaji bulan juni"
+                }
+              }
+            }
+          },
+          "paging" : {
+            "$ref": "#/components/schemas/paging"
+          }
+        }
+      },
+      "responseCreateSavingSuccess": {
+        "type": "object",
+        "properties": {
+          "data" : {
+            "properties": {
+              "savingId" : {
+                "type": "string",
+                "example": "14556663"
+              },
+              "nameSaving" : {
+                "type": "string",
+                "example": "beli motor"
+              },
+              "targetAmount" : {
+                "type": "integer",
+                "format": "int64",
+                "example": 3000000
+              },
+              "deadline" : {
+                "type": "string",
+                "format": "date",
+                "example": "2026-05-20"
+              },
+              "createdAt" : {
+                "type": "string",
+                "format": "date",
+                "example": "2026-01-03"
+              }
+            }
+          }
+        }
+      },
+      "responseGetSavingProgress" : {
+        "type": "object",
+        "properties": {
+          "data" : {
+            "properties": {
+              "savingId" : {
+                "type": "string",
+                "example": "14556663"
+              },
+              "nameSaving" : {
+                "type": "string",
+                "example": "beli motor"
+              },
+              "targetAmount" : {
+                "type": "integer",
+                "format": "int64",
+                "example": 3000000
+              },
+              "currentBalance" : {
+                "type": "integer",
+                "format": "int64",
+                "example": 1000000
+              },
+              "progressPercentage" : {
+                "type": "number",
+                "example": 33.33
+              },
+              "remainingAmount" : {
+                "type": "integer",
+                "format": "int64",
+                "example": 2000000
+              }
+            }
+          }
+        }
+      },
+      "responseListSaving" : {
+        "type": "object",
+        "properties": {
+          "data" : {
+            "type": "array",
+            "items": {
+              "properties": {
+                "savingId" : {
+                  "type": "string",
+                  "example": "14556663"
+                },
+                "nameSaving" : {
+                  "type": "string",
+                  "example": "beli motor"
+                },
+                "targetAmount" : {
+                  "type": "integer",
+                  "format": "int64",
+                  "example": 3000000
+                },
+                "deadline" : {
+                  "type": "string",
+                  "format": "date",
+                  "example": "2026-05-20"
+                },
+                "createdAt" : {
+                  "type": "string",
+                  "format": "date",
+                  "example": "2026-01-03"
+                }
+              }
+            }
+          },
+          "paging" : {
+            "$ref": "#/components/schemas/paging"
+          }
+        }
+      },
+      "responseGetUserFinance" : {
+        "type": "object",
+        "properties": {
+          "data" : {
+            "properties": {
+              "totalIncome" : {
+                "type": "integer",
+                "format": "int64",
+                "example": 3000000
+              },
+              "totalExpense" : {
+                "type": "integer",
+                "format": "int64",
+                "example": 1500000
+              },
+              "currentBalance" : {
+                "type": "integer",
+                "format": "int64",
+                "example": 1500000
+              }
+            }
+          }
+        }
+      },
+      "responseGetUserSavingProgress" : {
+        "type": "object",
+        "properties": {
+          "data" : {
+            "type": "array",
+            "items": {
+              "properties": {
+                "savingId" : {
+                  "type": "string",
+                  "example": "14556663"
+                },
+                "nameSaving" : {
+                  "type": "string",
+                  "example": "beli motor"
+                },
+                "targetAmount" : {
+                  "type": "integer",
+                  "format": "int64",
+                  "example": 3000000
+                },
+                "currentBalance" : {
+                  "type": "integer",
+                  "format": "int64",
+                  "example": 1000000
+                },
+                "progressPercentage" : {
+                  "type": "number",
+                  "example": 33.33
+                },
+                "remainingAmount" : {
+                  "type": "integer",
+                  "format": "int64",
+                  "example": 2000000
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
