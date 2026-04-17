@@ -12,7 +12,7 @@ public interface IncomeService {
     IncomeResponse createIncome(String email, @Valid CreateIncomeRequest request);
     IncomeResponse getIncome(String email,String incomeId);
     Page<IncomeResponse> listIncome(String email, @Valid ListIncomeRequest request);
-    public IncomeResponse editIncome(String email, String incomeId,@Valid UpdateIncomeRequest request);
+    IncomeResponse editIncome(String email, String incomeId,@Valid UpdateIncomeRequest request);
     void deleteIncome(String email,String incomeId);
 
 }
