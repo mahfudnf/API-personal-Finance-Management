@@ -9,6 +9,8 @@ This project features:
 - User management
 - Income management
 - Expense management
+- Monthly spending limit
+- Monthly spending summary
 - Savings management
 - Dashboard display
 
@@ -16,7 +18,7 @@ This project features:
 
 To read the API document, please go to the following link Swagger UI:
 ```text
-    http://localhost:8080/swagger-ui.html
+    http://localhost:8080/swagger-ui/index.html
 ```
 
 Note: Run the application locally to access the documentation.
@@ -48,6 +50,7 @@ Edit `.env` according to your local setup:
 DB_URL=your_db_url_here
 DB_USERNAME=your_db_username_here
 DB_PASSWORD=your_db_password_here
+JWT_SECRET_KEY=your_secret_key
 ```
 
 > `.env.example` is provided as a reference.  
