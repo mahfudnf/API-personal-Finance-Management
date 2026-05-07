@@ -17,6 +17,11 @@ public interface IncomeRepository extends JpaRepository<Income,String>, JpaSpeci
 
     Optional<Income> findByUserAndIncomeId(UserEntity user, String incomeId);
 
+    Page<Income> findByUser(UserEntity user, Pageable pageable);
+
+    Page<Income> findByUserAndCategoryContaining(
+            UserEntity user, String category, Pageable pageable);
+
     @Query("""
        SELECT SUM(i.amount)
        FROM Income i

@@ -1,22 +1,23 @@
 package com.personalfinance.management.service.impl;
 
+import com.personalfinance.management.constant.Status;
 import com.personalfinance.management.entity.Saving;
 import com.personalfinance.management.entity.UserEntity;
-import com.personalfinance.management.model.dashboard.DashboardResponse;
-import com.personalfinance.management.model.saving.SavingProgressResponse;
+import com.personalfinance.management.model.response.DashboardResponse;
+import com.personalfinance.management.model.response.SavingProgressResponse;
 import com.personalfinance.management.repository.*;
 import com.personalfinance.management.service.DashboardService;
+import com.personalfinance.management.utils.ResponseUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
 @Service
+@Transactional
 public class DashboardServiceImpl implements DashboardService {
-
     @Autowired
     private UserRepository userRepository;
 
@@ -32,11 +33,21 @@ public class DashboardServiceImpl implements DashboardService {
     @Autowired
     private SavingTransactionRepository savingTransactionRepository;
 
-    @Transactional(readOnly = true)
-    public DashboardResponse getDashboard(String email){
-        UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Unauthorized"));
+    @Autowired
+    private MonthlySpendingLimitRepository limitRepository;
 
+    @Autowired
+    private ResponseUtils responseUtils;
+
+
+    @Override
+    public DashboardResponse getDashboard() {
+        String email = responseUtils.getCurrentUserEmail();
+
+        UserEntity user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new AuthenticationException("Unauthorized") {});
+
+        // 1. Income & Expense
         Long totalIncome = incomeRepository.sumByUserId(user.getUserId());
         Long totalExpense = expenseRepository.sumByUserId(user.getUserId());
 
@@ -45,52 +56,49 @@ public class DashboardServiceImpl implements DashboardService {
 
         Long currentBalance = totalIncome - totalExpense;
 
+        // 2. Spending Limit
+        Long spendingLimit = limitRepository.findLimitValueByUserId(user.getUserId());
+        if (spendingLimit == null) spendingLimit = 0L;
+
+        // 3. Saving Progress
+        List<Saving> savings = savingRepository.findByUser(user);
+
+        List<SavingProgressResponse> savingProgressList = savings.stream().map(saving -> {
+            Long savedAmount = savingTransactionRepository
+                    .sumBySavingId(saving.getSavingId());
+
+            if (savedAmount == null) savedAmount = 0L;
+
+            Long target = saving.getTargetSaving();
+            Long remaining = Math.max(target - savedAmount, 0);
+
+            double progress = 0;
+            if (target != null && target > 0) {
+                progress = Math.min((double) savedAmount / target * 100, 100);
+            }
+
+            Status status = responseUtils.statusActual(savedAmount,target);
+
+            return SavingProgressResponse.builder()
+                    .savingId(saving.getSavingId())
+                    .userId(saving.getUser().getUserId())
+                    .nameSaving(saving.getNameSaving())
+                    .targetSaving(target)
+                    .currentAmount(savedAmount)
+                    .status(status)
+                    .remainingAmount(remaining)
+                    .progressPercentage(progress)
+                    .build();
+
+        }).toList();
+
+        // 4. Build Response
         return DashboardResponse.builder()
                 .totalIncome(totalIncome)
                 .totalExpense(totalExpense)
                 .currentBalance(currentBalance)
+                .spendingLimit(spendingLimit)
+                .savingProgress(savingProgressList)
                 .build();
     }
-
-    @Transactional
-    public List<SavingProgressResponse> getSavingProgress(String email) {
-        UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Unauthorized"));
-
-        List<Saving> savings = savingRepository.findByUser(user);
-
-        return savings.stream().map(this::mapToProgress).toList();
-    }
-
-    // Method Helper
-    private SavingProgressResponse mapToProgress(Saving saving) {
-
-        Long currentBalance =
-                savingTransactionRepository.sumBySavingId(saving.getSavingId());
-
-        if (currentBalance == null) currentBalance = 0L;
-
-        Long target = saving.getTargetAmount();
-
-        Long remainingAmount = Math.max(target - currentBalance, 0);
-
-        double progressPercentage = 0;
-
-        if (target != null && target > 0) {
-            progressPercentage = Math.min(
-                    (double) currentBalance / target * 100,
-                    100
-            );
-        }
-
-        return SavingProgressResponse.builder()
-                .savingId(saving.getSavingId())
-                .nameSaving(saving.getNameSaving())
-                .targetAmount(target)
-                .currentBalance(currentBalance)
-                .progressPercentage(progressPercentage)
-                .remainingAmount(remainingAmount)
-                .build();
-    }
-
 }

@@ -1,193 +1,159 @@
 package com.personalfinance.management.service.impl;
 
+import com.personalfinance.management.constant.Status;
 import com.personalfinance.management.entity.Saving;
 import com.personalfinance.management.entity.SavingTransaction;
 import com.personalfinance.management.entity.UserEntity;
-import com.personalfinance.management.model.saving.*;
+import com.personalfinance.management.exception.custom.ResourceNotFoundException;
+import com.personalfinance.management.model.request.CreateSavingRequest;
+import com.personalfinance.management.model.request.CreateSavingTransactionRequest;
+import com.personalfinance.management.model.request.ListSavingRequest;
+import com.personalfinance.management.model.response.SavingProgressResponse;
+import com.personalfinance.management.model.response.SavingResponse;
 import com.personalfinance.management.repository.SavingRepository;
 import com.personalfinance.management.repository.SavingTransactionRepository;
 import com.personalfinance.management.repository.UserRepository;
 import com.personalfinance.management.service.SavingService;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.personalfinance.management.utils.ResponseUtils;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
 
 @Service
-@Validated
+@Transactional
 public class SavingServiceImpl implements SavingService {
+    private final UserRepository userRepository;
+    private final SavingRepository savingRepository;
+    private final SavingTransactionRepository savingTransactionRepository;
+    private final ResponseUtils responseUtils;
 
-    @Autowired
-    private UserRepository userRepository;
+    public SavingServiceImpl(UserRepository userRepository, SavingRepository savingRepository, SavingTransactionRepository savingTransactionRepository, ResponseUtils responseUtils) {
+        this.userRepository = userRepository;
+        this.savingRepository = savingRepository;
+        this.savingTransactionRepository = savingTransactionRepository;
+        this.responseUtils = responseUtils;
+    }
 
-    @Autowired
-    private SavingRepository savingRepository;
-
-    @Autowired
-    private SavingTransactionRepository savingTransactionRepository;
-
-    @Transactional
-    public SavingResponse createSaving(String email,@Valid CreateSavingRequest request){
+    public SavingResponse createSaving(CreateSavingRequest request){
+        String email = responseUtils.getCurrentUserEmail();
 
         UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Unauthorized"));
+                .orElseThrow(()-> new AuthenticationException("Unauthorized") {});
 
         Saving saving = new Saving();
         saving.setNameSaving(request.getNameSaving());
-        saving.setTargetAmount(request.getTargetAmount());
-        saving.setDeadline(request.getDeadline());
-        saving.setCreatedAt(LocalDateTime.now());
+        saving.setTargetSaving(request.getTargetSaving());
+        saving.setDeadlineSaving(request.getDeadlineSaving());
         saving.setUser(user);
         savingRepository.save(saving);
 
-        return toSavingResponse(saving);
+        return responseUtils.toSavingResponse(saving);
     }
 
-    @Transactional(readOnly = true)
-    public SavingResponse getSaving(String email,String savingId){
+    public SavingResponse getSaving(String savingId){
+        String email = responseUtils.getCurrentUserEmail();
+
         UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Unauthorized"));
+                .orElseThrow(()-> new AuthenticationException("Unauthorized") {});
 
         Saving saving = savingRepository.findByUserAndSavingId(user,savingId)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND,"saving not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("Saving dengan id " + savingId + " tidak ditemukan"));
 
-        return toSavingResponse(saving);
+        return responseUtils.toSavingResponse(saving);
     }
 
-    @Transactional
-    public void createSavingTransaction(String email, String savingId,@Valid CreateSavingTransactionRequest request){
+    public void createSavingTransaction(String savingId, CreateSavingTransactionRequest request){
+        String email = responseUtils.getCurrentUserEmail();
 
         UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Unauthorized"));
+                .orElseThrow(()-> new AuthenticationException("Unauthorized") {});
 
         Saving saving = savingRepository.findByUserAndSavingId(user,savingId)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND,"saving not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("Saving dengan id " + savingId + " tidak ditemukan"));
 
         SavingTransaction transaction = new SavingTransaction();
-        transaction.setAmount(request.getAmount());
-        transaction.setCreatedAt(LocalDateTime.now());
+        transaction.setTransactionAmount(request.getTransactionAmount());
         transaction.setSaving(saving);
+        transaction.setUser(user);
 
         savingTransactionRepository.save(transaction);
+
+        Long currentAmount = savingTransactionRepository.sumBySavingId(savingId);
+        saving.setStatus(
+                currentAmount >= saving.getTargetSaving()
+                        ? Status.SUCCESS
+                        : Status.PROGRESS
+        );
+
+        savingRepository.save(saving);
     }
 
-    @Transactional(readOnly = true)
-    public SavingProgressResponse getSavingProgress(String email,String savingId){
+    public SavingProgressResponse getSavingProgress(String savingId){
+        String email = responseUtils.getCurrentUserEmail();
+
         UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Unauthorized"));
+                .orElseThrow(()-> new AuthenticationException("Unauthorized") {});
 
         Saving saving = savingRepository.findByUserAndSavingId(user,savingId)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND,"saving not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("Saving dengan id " + savingId + " tidak ditemukan"));
 
-        return toSavingProgressResponse(saving);
+
+        return responseUtils.toSavingProgressResponse(saving);
     }
 
-    @Transactional(readOnly = true)
-    public Page<SavingResponse> listSaving(String email,@Valid ListSavingRequest request){
+    public Page<SavingResponse> listSaving(ListSavingRequest request){
+        String email = responseUtils.getCurrentUserEmail();
+
         UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Unauthorized"));
+                .orElseThrow(()-> new AuthenticationException("Unauthorized") {});
 
-        Specification<Saving> specification = (root, query, criteriaBuilder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(criteriaBuilder.equal(root.get("user"), user));
-
-            if (Objects.nonNull(request.getNameSaving())){
-                predicates.add(criteriaBuilder.or(
-                        criteriaBuilder.like(root.get("nameSaving"),"%" + request.getNameSaving() + "%")
-                ));
-            }
-            return query.where(predicates.toArray(new Predicate[]{})).getRestriction();
-        };
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        Page<Saving> savings = savingRepository.findAll(specification,pageable);
-        List<SavingResponse> savingResponses = savings.getContent().stream()
-                .map(this::toSavingResponse)
-                .toList();
 
-        return new PageImpl<>(savingResponses,pageable,savings.getTotalElements());
+        Page<Saving> savings;
+        if (request.getNameSaving() != null) {
+            savings = savingRepository.findByUserAndNameSavingContaining(
+                    user,
+                    request.getNameSaving(),
+                    pageable
+            );
+        } else {
+            savings = savingRepository.findByUser(user, pageable);
+        }
+
+        return savings.map(responseUtils::toSavingResponse);
     }
 
-    @Transactional
-    public SavingResponse editSaving(String email,String savingId,@Valid CreateSavingRequest request){
+    public SavingResponse editSaving(String savingId, CreateSavingRequest request){
+        String email = responseUtils.getCurrentUserEmail();
 
         UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Unauthorized"));
+                .orElseThrow(()-> new AuthenticationException("Unauthorized") {});
 
         Saving saving = savingRepository.findByUserAndSavingId(user,savingId)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND,"saving not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("Saving dengan id " + savingId + " tidak ditemukan"));
 
         saving.setNameSaving(request.getNameSaving());
-        saving.setTargetAmount(request.getTargetAmount());
-        saving.setDeadline(request.getDeadline());
+        saving.setTargetSaving(request.getTargetSaving());
+        saving.setDeadlineSaving(request.getDeadlineSaving());
         savingRepository.save(saving);
 
-        return toSavingResponse(saving);
+        return responseUtils.toSavingResponse(saving);
     }
 
-    @Transactional
-    public void deleteSaving(String email,String savingId){
+    public void deleteSaving(String savingId){
+        String email = responseUtils.getCurrentUserEmail();
+
         UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Unauthorized"));
+                .orElseThrow(()-> new AuthenticationException("Unauthorized") {});
 
         Saving saving = savingRepository.findByUserAndSavingId(user,savingId)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND,"saving not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("Saving dengan id " + savingId + " tidak ditemukan"));
 
         savingRepository.delete(saving);
     }
 
-    // Method Helper
-    private SavingResponse toSavingResponse(Saving saving){
-        return SavingResponse.builder()
-                .savingId(saving.getSavingId())
-                .nameSaving(saving.getNameSaving())
-                .targetAmount(saving.getTargetAmount())
-                .deadline(saving.getDeadline())
-                .CreatedAt(saving.getCreatedAt())
-                .build();
-    }
 
-    private SavingProgressResponse toSavingProgressResponse(Saving saving){
-
-        Long currentBalance = savingTransactionRepository.sumBySavingId(saving.getSavingId());
-
-        if (currentBalance == null){
-            currentBalance = 0L;
-        }
-
-        Long target = saving.getTargetAmount();
-
-        Long remainingAmount = Math.max(target - currentBalance, 0);
-
-        double progressPercentage = 0;
-
-        if (target != null && target > 0) {
-            progressPercentage = Math.min(
-                    (double) currentBalance / target * 100,
-                    100
-            );
-        }
-
-        return SavingProgressResponse.builder()
-                .savingId(saving.getSavingId())
-                .nameSaving(saving.getNameSaving())
-                .targetAmount(saving.getTargetAmount())
-                .currentBalance(currentBalance)
-                .progressPercentage(progressPercentage)
-                .remainingAmount(remainingAmount)
-                .build();
-    }
 }

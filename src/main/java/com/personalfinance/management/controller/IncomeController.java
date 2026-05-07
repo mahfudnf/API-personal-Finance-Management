@@ -1,54 +1,58 @@
 package com.personalfinance.management.controller;
 
-import com.personalfinance.management.model.PagingResponse;
-import com.personalfinance.management.model.WebResponse;
-import com.personalfinance.management.model.income.CreateIncomeRequest;
-import com.personalfinance.management.model.income.IncomeResponse;
-import com.personalfinance.management.model.income.ListIncomeRequest;
-import com.personalfinance.management.model.income.UpdateIncomeRequest;
+import com.personalfinance.management.model.response.PagingResponse;
+import com.personalfinance.management.model.response.WebResponse;
+import com.personalfinance.management.model.request.CreateIncomeRequest;
+import com.personalfinance.management.model.response.IncomeResponse;
+import com.personalfinance.management.model.request.ListIncomeRequest;
+import com.personalfinance.management.model.request.UpdateIncomeRequest;
 import com.personalfinance.management.service.IncomeService;
-import com.personalfinance.management.service.impl.IncomeServiceImpl;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.User;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 public class IncomeController {
+    private final IncomeService incomeService;
 
-    @Autowired
-    private IncomeService incomeService;
+    public IncomeController(IncomeService incomeService) {
+        this.incomeService = incomeService;
+    }
 
     @PostMapping(
             path = "/api/incomes",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public WebResponse<IncomeResponse> createIncome(@AuthenticationPrincipal User user, @RequestBody @Valid CreateIncomeRequest request){
-        IncomeResponse response = incomeService.createIncome(user.getUsername(), request);
-        return WebResponse.<IncomeResponse>builder().data(response).build();
+    public ResponseEntity<WebResponse<IncomeResponse>> createIncome(
+            @RequestBody @Valid CreateIncomeRequest request){
+
+        IncomeResponse response = incomeService.createIncome(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(WebResponse.<IncomeResponse>builder().data(response).build());
     }
 
     @GetMapping(
             path = "/api/incomes/{incomeId}",
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public WebResponse<IncomeResponse> getIncome(@AuthenticationPrincipal User user,@PathVariable("incomeId") String incomeId){
-        IncomeResponse response = incomeService.getIncome(user.getUsername(),incomeId);
-        return WebResponse.<IncomeResponse>builder().data(response).build();
+    public ResponseEntity<WebResponse<IncomeResponse>> getIncome(@PathVariable("incomeId") String incomeId){
+
+        IncomeResponse response = incomeService.getIncome(incomeId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(WebResponse.<IncomeResponse>builder().data(response).build());
     }
 
     @GetMapping(
             path = "/api/incomes",
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public WebResponse<List<IncomeResponse>> listIncome(
-            @AuthenticationPrincipal User user,
+    public ResponseEntity<WebResponse<List<IncomeResponse>>> listIncome(
             @RequestParam (value = "category",required = false) String category,
             @RequestParam(value = "page", required = false,defaultValue = "0") Integer page,
             @RequestParam(value = "size", required = false,defaultValue = "10") Integer size){
@@ -59,15 +63,19 @@ public class IncomeController {
                 .size(size)
                 .build();
 
-        Page<IncomeResponse> incomeResponses = incomeService.listIncome(user.getUsername(), request);
-        return WebResponse.<List<IncomeResponse>>builder()
-                .data(incomeResponses.getContent())
-                .paging(PagingResponse.builder()
-                        .currentPage(incomeResponses.getNumber())
-                        .totalPage(incomeResponses.getTotalPages())
-                        .size(incomeResponses.getSize())
-                        .build())
-                .build();
+        Page<IncomeResponse> incomeResponses = incomeService.listIncome(request);
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(
+                        WebResponse.<List<IncomeResponse>>builder()
+                                .data(incomeResponses.getContent())
+                                .paging(PagingResponse.builder()
+                                        .currentPage(incomeResponses.getNumber())
+                                        .totalPage(incomeResponses.getTotalPages())
+                                        .size(incomeResponses.getSize())
+                                        .build())
+                                .build()
+                );
     }
 
     @PatchMapping(
@@ -75,21 +83,23 @@ public class IncomeController {
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public WebResponse<IncomeResponse> editIncome(
-            @AuthenticationPrincipal User user,@PathVariable("incomeId") String incomeId,@RequestBody @Valid UpdateIncomeRequest request){
+    public ResponseEntity<WebResponse<IncomeResponse>> editIncome(
+            @PathVariable("incomeId") String incomeId,@RequestBody @Valid UpdateIncomeRequest request){
 
-        IncomeResponse response = incomeService.editIncome(user.getUsername(), incomeId,request);
-        return WebResponse.<IncomeResponse>builder().data(response).build();
+        IncomeResponse response = incomeService.editIncome(incomeId,request);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(WebResponse.<IncomeResponse>builder().data(response).build());
     }
 
     @DeleteMapping(
             path = "/api/incomes/{incomeId}",
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public WebResponse<String> deleteIncome(@AuthenticationPrincipal User user,@PathVariable("incomeId") String incomeId){
+    public ResponseEntity<WebResponse<String>> deleteIncome(@PathVariable("incomeId") String incomeId){
 
-        incomeService.deleteIncome(user.getUsername(), incomeId);
-        return WebResponse.<String>builder().data("OK").build();
+        incomeService.deleteIncome(incomeId);
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(WebResponse.<String>builder().data("OK").build());
     }
 
 }

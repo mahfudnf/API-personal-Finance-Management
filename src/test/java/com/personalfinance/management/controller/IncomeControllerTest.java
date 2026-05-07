@@ -4,13 +4,14 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.personalfinance.management.entity.Income;
 import com.personalfinance.management.entity.UserEntity;
-import com.personalfinance.management.model.WebResponse;
-import com.personalfinance.management.model.income.CreateIncomeRequest;
-import com.personalfinance.management.model.income.IncomeResponse;
-import com.personalfinance.management.model.income.UpdateIncomeRequest;
+import com.personalfinance.management.model.response.ErrorResponse;
+import com.personalfinance.management.model.response.WebResponse;
+import com.personalfinance.management.model.request.CreateIncomeRequest;
+import com.personalfinance.management.model.response.IncomeResponse;
+import com.personalfinance.management.model.request.UpdateIncomeRequest;
 import com.personalfinance.management.repository.IncomeRepository;
 import com.personalfinance.management.repository.UserRepository;
-import com.personalfinance.management.security.JwtUtil;
+import com.personalfinance.management.security.service.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,13 +22,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.MockMvcBuilder.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -51,7 +49,7 @@ public class IncomeControllerTest {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private JwtUtil jwtUtil;
+    private JwtService jwtService;
 
     @BeforeEach
     void setUp(){
@@ -60,19 +58,20 @@ public class IncomeControllerTest {
     }
 
     // Method Helper
-    private String createUserAndGetToken(){
+    private String createUserAndGetToken(String email){
         UserEntity user = new UserEntity();
-        user.setName("joko");
-        user.setEmail("joko@gmail.com");
+        user.setFirstName("mahfud");
+        user.setLastName("nur");
+        user.setEmail(email);
         user.setPassword(passwordEncoder.encode("abc123"));
         userRepository.save(user);
 
-        return jwtUtil.generateToken(user.getEmail());
+        return jwtService.generateToken(user);
     }
 
     private Income createIncome(UserEntity user){
         Income income = new Income();
-        income.setAmount(100000L);
+        income.setAmount(1_000_000L);
         income.setCategory("gaji");
         income.setDescription("gaji bulan april");
         income.setUser(user);
@@ -83,7 +82,7 @@ public class IncomeControllerTest {
     @Test
     void createIncomeBadRequest() throws Exception{
 
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("aaa@gmail.com");
 
         CreateIncomeRequest request = new CreateIncomeRequest();
         request.setAmount(null);
@@ -99,18 +98,18 @@ public class IncomeControllerTest {
         ).andExpectAll(
                 status().isBadRequest()
         ).andDo(result -> {
-            WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
-            });
+            ErrorResponse response = objectMapper
+                    .readValue(result.getResponse().getContentAsString(), ErrorResponse.class);
             assertNotNull(response.getErrors());
         });
     }
 
     @Test
     void createIncomeSuccess() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("mahfudnf@gmail.com");
 
         CreateIncomeRequest request = new CreateIncomeRequest();
-        request.setAmount(100000L);
+        request.setAmount(1_000_000L);
         request.setCategory("gaji");
         request.setDescription("gaji bulan april");
 
@@ -121,16 +120,17 @@ public class IncomeControllerTest {
                         .content(objectMapper.writeValueAsString(request))
                         .header("Authorization", "Bearer " + token)
         ).andExpectAll(
-                status().isOk()
+                status().isCreated()
         ).andDo(result -> {
             WebResponse<IncomeResponse> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
             });
-            assertNull(response.getErrors());
             assertNotNull(response.getData().getIncomeId());
+            assertNotNull(response.getData().getUserId());
             assertEquals(request.getAmount(), response.getData().getAmount());
             assertEquals(request.getCategory(), response.getData().getCategory());
-            assertNotNull(response.getData().getCreatedAt());
             assertEquals(request.getDescription(), response.getData().getDescription());
+            assertNotNull(response.getData().getCreatedAt());
+            assertNotNull(response.getData().getUpdatedAt());
 
             assertTrue(incomeRepository.existsById(response.getData().getIncomeId()));
         });
@@ -138,7 +138,7 @@ public class IncomeControllerTest {
 
     @Test
     void getIncomeNotFound()throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("bbb@gmail.com");
 
         mockMvc.perform(
                 get("/api/incomes/23344566777")
@@ -148,17 +148,17 @@ public class IncomeControllerTest {
         ).andExpectAll(
                 status().isNotFound()
         ).andDo(result -> {
-            WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
-            });
+            ErrorResponse response = objectMapper
+                    .readValue(result.getResponse().getContentAsString(), ErrorResponse.class);
             assertNotNull(response.getErrors());
         });
     }
 
     @Test
     void getIncomeSuccess() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("ccc@gmail.com");
 
-        UserEntity user = userRepository.findByEmail("joko@gmail.com").orElseThrow();
+        UserEntity user = userRepository.findByEmail("ccc@gmail.com").orElseThrow();
         Income income = createIncome(user);
         String id = income.getIncomeId();
 
@@ -172,18 +172,19 @@ public class IncomeControllerTest {
         ).andDo(result -> {
             WebResponse<IncomeResponse> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
             });
-            assertNull(response.getErrors());
             assertNotNull(response.getData().getIncomeId());
-            assertEquals(100000L, response.getData().getAmount());
+            assertNotNull(response.getData().getUserId());
+            assertEquals(1_000_000L, response.getData().getAmount());
             assertEquals("gaji", response.getData().getCategory());
-            assertNotNull(response.getData().getCreatedAt());
             assertEquals("gaji bulan april", response.getData().getDescription());
+            assertNotNull(response.getData().getCreatedAt());
+            assertNotNull(response.getData().getUpdatedAt());
         });
     }
 
     @Test
     void listIncomeNotFound() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("ddd@gmail.com");
 
         mockMvc.perform(
                 get("/api/incomes")
@@ -195,7 +196,6 @@ public class IncomeControllerTest {
         ).andDo(result -> {
             WebResponse<List<IncomeResponse>> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
             });
-            assertNull(response.getErrors());
             assertEquals(0,response.getData().size());
             assertEquals(0,response.getPaging().getTotalPage());
             assertEquals(0,response.getPaging().getCurrentPage());
@@ -205,12 +205,12 @@ public class IncomeControllerTest {
 
     @Test
     void listIncomeSuccess() throws Exception{
-        String token = createUserAndGetToken();
-        UserEntity user = userRepository.findByEmail("joko@gmail.com").orElseThrow();
+        String token = createUserAndGetToken("eee@gmail.com");
+        UserEntity user = userRepository.findByEmail("eee@gmail.com").orElseThrow();
 
         for (int i=0 ; i<100 ; i++){
             Income income = new Income();
-            income.setAmount(200000L);
+            income.setAmount(2_000_000L);
             income.setCategory("freelance" + i);
             income.setDescription("gaji dari freelance");
             income.setUser(user);
@@ -228,7 +228,6 @@ public class IncomeControllerTest {
         ).andDo(result -> {
             WebResponse<List<IncomeResponse>> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
             });
-            assertNull(response.getErrors());
             assertEquals(10,response.getData().size());
             assertEquals(10,response.getPaging().getTotalPage());
             assertEquals(0,response.getPaging().getCurrentPage());
@@ -238,9 +237,9 @@ public class IncomeControllerTest {
 
     @Test
     void editIncomeBadRequest() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("fff@gmail.com");
 
-        UserEntity user = userRepository.findByEmail("joko@gmail.com").orElseThrow();
+        UserEntity user = userRepository.findByEmail("fff@gmail.com").orElseThrow();
         Income income = createIncome(user);
         String id = income.getIncomeId();
 
@@ -256,22 +255,22 @@ public class IncomeControllerTest {
         ).andExpectAll(
                 status().isBadRequest()
         ).andDo(result -> {
-            WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
-            });
+            ErrorResponse response = objectMapper
+                    .readValue(result.getResponse().getContentAsString(), ErrorResponse.class);
             assertNotNull(response.getErrors());
         });
     }
 
     @Test
     void editIncomeSuccess() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("ggg@gmail.com");
 
-        UserEntity user = userRepository.findByEmail("joko@gmail.com").orElseThrow();
+        UserEntity user = userRepository.findByEmail("ggg@gmail.com").orElseThrow();
         Income income = createIncome(user);
         String id = income.getIncomeId();
 
         UpdateIncomeRequest request = new UpdateIncomeRequest();
-        request.setAmount(200000L);
+        request.setAmount(2_000_000L);
         request.setCategory("freelance");
         request.setDescription("gaji dari freelance");
 
@@ -286,12 +285,13 @@ public class IncomeControllerTest {
         ).andDo(result -> {
             WebResponse<IncomeResponse> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
             });
-            assertNull(response.getErrors());
             assertNotNull(response.getData().getIncomeId());
-            assertEquals(request.getAmount(),response.getData().getAmount());
-            assertEquals(request.getCategory(),response.getData().getCategory());
+            assertNotNull(response.getData().getUserId());
+            assertEquals(request.getAmount(), response.getData().getAmount());
+            assertEquals(request.getCategory(), response.getData().getCategory());
+            assertEquals(request.getDescription(), response.getData().getDescription());
             assertNotNull(response.getData().getCreatedAt());
-            assertEquals(request.getDescription(),response.getData().getDescription());
+            assertNotNull(response.getData().getUpdatedAt());
 
             assertTrue(incomeRepository.existsById(response.getData().getIncomeId()));
         });
@@ -299,7 +299,7 @@ public class IncomeControllerTest {
 
     @Test
     void deleteIncomeNotFound() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("hhh@gmail.com");
 
         mockMvc.perform(
                 delete("/api/incomes/2345667777")
@@ -309,17 +309,17 @@ public class IncomeControllerTest {
         ).andExpectAll(
                 status().isNotFound()
         ).andDo(result -> {
-            WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
-            });
+            ErrorResponse response = objectMapper
+                    .readValue(result.getResponse().getContentAsString(), ErrorResponse.class);
             assertNotNull(response.getErrors());
         });
     }
 
     @Test
     void deleteIncomeSuccess() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("iii@gmail.com");
 
-        UserEntity user = userRepository.findByEmail("joko@gmail.com").orElseThrow();
+        UserEntity user = userRepository.findByEmail("iii@gmail.com").orElseThrow();
         Income income = createIncome(user);
         String id = income.getIncomeId();
 
@@ -333,7 +333,6 @@ public class IncomeControllerTest {
         ).andDo(result -> {
             WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
             });
-            assertNull(response.getErrors());
             assertEquals("OK",response.getData());
         });
     }

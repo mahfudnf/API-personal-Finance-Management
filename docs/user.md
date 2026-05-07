@@ -7,23 +7,24 @@ Endpoint : POST /api/users/register
 Request Body :
 ```json
 {
-  "name" : "joko",
-  "email" : "joko@email.com",
+  "firstName" : "mahfud",
+  "lastName" : "nur",
+  "email" : "mahfud@gmail.com",
   "password " : "abc123"
 }
 ```
 
-Response Body(Success) :
+Response Body(Success 201) :
 ```json
 {
   "data" : "OK"
 }
 ```
 
-Response Body(Failed)
+Response Body(Failed 400)
 ```json
 {
-  "errors" : "name already registered"
+  "errors" : "Email sudah terdaftar"
 }
 ```
 
@@ -33,12 +34,12 @@ Endpoint : POST /api/users/login
 Request Body :
 ```json
 {
-  "email" : "joko@gmail.com",
+  "email" : "mahfud@gmail.com",
   "password" : "abc123"
 }
 ```
 
-Response Body(Success) :
+Response Body(Success 200) :
 ```json
 {
   "data" : {
@@ -48,10 +49,10 @@ Response Body(Success) :
 }
 ```
 
-Response Body(Failed) :
+Response Body(Failed 400) :
 ```json
 {
-  "errors" : "name or password wrong"
+  "errors" : "email atau password salah"
 }
 ```
 
@@ -61,17 +62,20 @@ Endpoint : GET /api/users/current
 Request Header :
 - Authorization: Bearer <TOKEN>
 
-Response Body(Success) :
+Response Body(Success 200) :
 ```json
 {
   "data" : {
-    "name" : "joko",
-    "email" : "joko@gmail.com"
+    "userId" : "245167288292",
+    "firstName" : "mahfud",
+    "lastName" : "nur",
+    "email" : "mahfud@gmail.com",
+    "role" : "user"
   }
 }
 ```
 
-Response Body(Failed) :
+Response Body(Failed 401) :
 ```json
 {
   "errors" : "Unauthorized"
@@ -87,25 +91,36 @@ Request Header :
 Request Body :
 ```json
 {
-  "name" : "asep", //put if only one to update
-  "password" : "xyz123" //put if only one to update
+  "firstName" : "abdul", // update opsional
+  "lastName" : "rudi",  // update opsional
+  "password " : "xyz123"  // update opsional
 }
 ```
 
-Response Body(Success) :
+Response Body(Success 200) :
 ```json
 {
   "data" : {
-    "name" : "asep",
-    "email" : "joko@gmail.com"
+    "userId" : "245167288292",
+    "firstName" : "abdul",
+    "lastName" : "rudi",
+    "email" : "mahfud@gmail.com",
+    "role" : "user"
   }
 }
 ```
 
-Response Body(Failed) :
+Response Body(Failed 401) :
 ```json
 {
   "errors" : "Unauthorized"
+}
+```
+
+Response Body(Failed 400) :
+```json
+{
+  "errors" : "Bad Request"
 }
 ```
 
@@ -115,7 +130,7 @@ Endpoint : POST /api/users/logout
 Request Header :
 - Authorization: Bearer <TOKEN>
 
-Response Body :
+Response Body (Success 200) :
 ```json
 {
   "data" : "OK"

@@ -10,21 +10,25 @@ Request Header :
 Request Body :
 ```json
 {
-  "nameSaving" : "tabungan beli motor",
-  "targetAmount" : 20000000,
-  "deadline" :"20-04-2026"
+  "nameSaving" : "beli motor",
+  "targetSaving" : 20000000,
+  "deadlineSaving" :"20-04-2026"
 }
 ```
 
-Response Body(Success) :
+Response Body(Success 201) :
 ```json
 {
   "data" : {
-    "saving_id" : "45566667",
-    "nameSaving" : "tabungan beli motor",
-    "targetAmount" : 20000000,
-    "deadline" :"20-04-2026",
-    "createAt" : "2026-02-15T10:15:30"
+    "savingId" : "1224353638",
+    "userId" : "255366728",
+    "nameSaving" : "beli motor",
+    "targetSaving" : 20000000,
+    "deadlineSaving" : "20-04-2026",
+    "currentAmount" : 0, // actual amount saving
+    "status" : "PROGRESS",
+    "createdAt": "2026-02-15T10:15:30",
+    "updatedAt" : "2026-02-15T10:15:30"
   }
 }
 ```
@@ -36,21 +40,32 @@ Response Body(Failed 401) :
 }
 ```
 
+Response Body(Failed 400) :
+```json
+{
+  "errors" : "Bad Request"
+}
+```
+
 ## Get Saving 
 Endpoint : GET /api/savings/{savingId}
 
 Request Header :
 - Authorization: Bearer <TOKEN>
 
-Response Body(Success) :
+Response Body(Success 200) :
 ```json
 {
   "data" : {
-    "saving_id" : "45566667",
-    "nameSaving" : "tabungan beli motor",
-    "targetAmount" : 20000000,
-    "deadline" :"20-04-2026",
-    "createAt" : "2026-02-15T10:15:30"
+    "savingId" : "1224353638",
+    "userId" : "255366728",
+    "nameSaving" : "beli motor",
+    "targetSaving" : 20000000,
+    "deadlineSaving" : "20-04-2026",
+    "currentAmount" : 0, // actual amount saving
+    "status" : "PROGRESS",
+    "createdAt": "2026-02-15T10:15:30",
+    "updatedAt" : "2026-02-15T10:15:30"
   }
 }
 ```
@@ -78,11 +93,11 @@ Request Header :
 Request Body :
 ```json
 {
-  "amount" : 10000000
+  "transactionAmount" : 10000000
 }
 ```
 
-Response Body(Success) :
+Response Body(Success 201) :
 ```json
 {
   "data" : "OK"
@@ -103,20 +118,29 @@ Response Body(Failed 404) :
 }
 ```
 
+Response Body(Failed 400) :
+```json
+{
+  "errors" : "Bad Request"
+}
+```
+
 ## Get Saving Progress
 Endpoint : GET /api/savings/{savingId}/saving_transaction/progress
 
 Request Header :
 - Authorization: Bearer <TOKEN>
 
-Response Body(Success) :
+Response Body(Success 200) :
 ```json
 {
   "data" : {
-    "saving_id" : "45566667",
+    "savingId" : "12345566667",
+    "userId" : "2235363773",
     "nameSaving" : "tabungan beli motor",
-    "targetAmount" : 20000000,
-    "currentBalance" : 1000000,
+    "targetSaving" : 20000000,
+    "currentAmount" : 1000000,
+    "status" : "PROGRESS",
     "progressPercentage" : 10,
     "remainingAmount" : 19000000
   }
@@ -144,20 +168,24 @@ Request Header :
 - Authorization: Bearer <TOKEN>
 
 Query Param :
-- name : String, saving name, using Like query, optional
+- nameSaving : String , using Like query, optional
 - page : Integer, start from 0, default 0
 - size : Integer, default 10
 
-Response Body(Success) :
+Response Body(Success 200) :
 ```json
 {
   "data" : [
     {
-      "saving_id" : "45566667",
-      "nameSaving" : "tabungan beli motor",
-      "targetAmount" : 20000000,
-      "deadline" :"20-04-2026",
-      "createAt" : "2026-02-15T10:15:30"
+      "savingId" : "1224353638",
+      "userId" : "255366728",
+      "nameSaving" : "beli motor",
+      "targetSaving" : 20000000,
+      "deadlineSaving" : "20-04-2026",
+      "currentAmount" : 10000000, // actual amount saving
+      "status" : "PROGRESS",
+      "createdAt": "2026-02-15T10:15:30",
+      "updatedAt" : "2026-02-15T10:15:30"
     }
   ],
   "paging" : {
@@ -184,21 +212,25 @@ Request Header :
 Request Body :
 ```json
 {
-  "nameSaving" : "tabungan beli motor",
-  "targetAmount" : 20000000,
-  "deadline" :"20-04-2026"
+  "nameSaving" : "beli mobil",
+  "targetSaving" : 50000000,
+  "deadlineSaving" :"20-05-2026"
 }
 ```
 
-Response Body(Success) :
+Response Body(Success 200) :
 ```json
 {
   "data" : {
-    "saving_id" : "45566667",
-    "nameSaving" : "tabungan beli motor",
-    "targetAmount" : 20000000,
-    "deadline" :"20-04-2026",
-    "createAt" : "2026-02-15T10:15:30"
+    "savingId" : "1224353638",
+    "userId" : "255366728",
+    "nameSaving" : "beli mobil",
+    "targetSaving" : 50000000,
+    "deadlineSaving" : "20-05-2026",
+    "currentAmount" : 10000000, // actual amount saving
+    "status" : "PROGRESS",
+    "createdAt": "2026-02-15T10:15:30",
+    "updatedAt" : "2026-02-20T10:15:30"
   }
 }
 ```
@@ -217,13 +249,20 @@ Response Body(Failed 404) :
 }
 ```
 
+Response Body(Failed 400) :
+```json
+{
+  "errors" : "Bad Request"
+}
+```
+
 ## Remove Saving
 Endpoint : DELETE /api/savings/{savingId}
 
 Request Header :
 - Authorization: Bearer <TOKEN>
 
-Response Body(Success) :
+Response Body(Success 200) :
 ```json
 {
   "data" : "OK"

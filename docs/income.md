@@ -16,15 +16,17 @@ Request Body :
 }
 ```
 
-Response Body(Success) :
+Response Body(Success 201) :
 ```json
 {
   "data" : {
-    "income_id" : "1231313",
+    "incomeId" : "1231313726",
+    "userId" : "425616171",
     "amount" : 100000,
     "category" : "gaji",
-    "createAt" : "2026-02-15T10:15:30",
-    "description" : "pendapatan gaji bulan juni"
+    "description" : "pendapatan gaji bulan juni",
+    "createdAt" : "2026-02-15T10:15:30",
+    "updatedAt" : "2026-02-15T10:15:30"
   }
 }
 ```
@@ -36,21 +38,30 @@ Response Body(Failed 401) :
 }
 ```
 
+Response Body(Failed 400) :
+```json
+{
+  "errors" : "Bad Request"
+}
+```
+
 ## Get Income
 Endpoint : GET /api/incomes/{incomeId}
 
 Request Header :
 - Authorization: Bearer <TOKEN>
 
-Response Body(Success) :
+Response Body(Success 200) :
 ```json
 {
   "data" : {
-    "income_id" : "1231313",
+    "incomeId" : "1231313726",
+    "userId" : "425616171",
     "amount" : 100000,
     "category" : "gaji",
-    "createAt" : "2026-02-15T10:15:30",
-    "description" : "pendapatan gaji bulan juni"
+    "description" : "pendapatan gaji bulan juni",
+    "createdAt" : "2026-02-15T10:15:30",
+    "updatedAt" : "2026-02-15T10:15:30"
   }
 }
 ```
@@ -76,20 +87,22 @@ Request Header :
 - Authorization: Bearer <TOKEN>
 
 Query Param :
-- category : String, income category, using Like query, optional
+- category : String, using Like query, optional
 - page : Integer, start from 0, default 0
 - size : Integer, default 10
 
-Response Body(Success) :
+Response Body(Success 200) :
 ```json
 {
   "data" : [
     {
-      "income_id" : "1231313",
+      "incomeId" : "1231313726",
+      "userId" : "425616171",
       "amount" : 100000,
       "category" : "gaji",
+      "description" : "pendapatan gaji bulan juni",
       "createdAt" : "2026-02-15T10:15:30",
-      "description" : "pendapatan gaji bulan juni"
+      "updatedAt" : "2026-02-15T10:15:30"
     }
   ],
   "paging" : {
@@ -116,21 +129,23 @@ Request Header :
 Request Body :
 ```json
 {
-  "amount" : 200000, // put if only one to update amount
-  "category" : "freelance", // put if only one to update category
-  "description" : "pendapatan gaji dari edit vidio" // put if only one to update description
+  "amount" : 200000, // update opsional
+  "category" : "freelance", // update opsional
+  "description" : "pendapatan gaji dari edit vidio" // update opsional
 }
 ```
 
-Response Body(Success) :
+Response Body(Success 200) :
 ```json
 {
   "data" : {
-    "income_id" : "1231313",
+    "incomeId" : "1231313726",
+    "userId" : "425616171",
     "amount" : 200000,
     "category" : "freelance",
+    "description" : "pendapatan gaji dari edit vidio",
     "createdAt" : "2026-02-15T10:15:30",
-    "description" : "pendapatan gaji dari edit vidio"
+    "updatedAt" : "2026-02-20T10:15:30"
   }
 }
 ```
@@ -149,13 +164,20 @@ Response Body(Failed 401) :
 }
 ```
 
+Response Body(Failed 400) :
+```json
+{
+  "errors" : "Bad Request"
+}
+```
+
 ## Remove Income
 Endpoint : DELETE /api/incomes/{incomeId}
 
 Request Header :
 - Authorization: Bearer <TOKEN>
 
-Response Body(Success) :
+Response Body(Success 200) :
 ```json
 {
   "data" : "OK"

@@ -2,101 +2,92 @@ package com.personalfinance.management.service.impl;
 
 import com.personalfinance.management.entity.Income;
 import com.personalfinance.management.entity.UserEntity;
-import com.personalfinance.management.model.income.CreateIncomeRequest;
-import com.personalfinance.management.model.income.IncomeResponse;
-import com.personalfinance.management.model.income.ListIncomeRequest;
-import com.personalfinance.management.model.income.UpdateIncomeRequest;
+import com.personalfinance.management.exception.custom.ResourceNotFoundException;
+import com.personalfinance.management.model.request.CreateIncomeRequest;
+import com.personalfinance.management.model.response.IncomeResponse;
+import com.personalfinance.management.model.request.ListIncomeRequest;
+import com.personalfinance.management.model.request.UpdateIncomeRequest;
 import com.personalfinance.management.repository.IncomeRepository;
 import com.personalfinance.management.repository.UserRepository;
 import com.personalfinance.management.service.IncomeService;
-import jakarta.persistence.criteria.Predicate;
-import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.personalfinance.management.utils.ResponseUtils;
 import org.springframework.data.domain.*;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.http.HttpStatus;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 @Service
-@Validated
+@Transactional
 public class IncomeServiceImpl implements IncomeService {
+    private final IncomeRepository incomeRepository;
+    private final UserRepository userRepository;
+    private final ResponseUtils responseUtils;
 
-    @Autowired
-    private IncomeRepository incomeRepository;
+    public IncomeServiceImpl(IncomeRepository incomeRepository, UserRepository userRepository, ResponseUtils responseUtils) {
+        this.incomeRepository = incomeRepository;
+        this.userRepository = userRepository;
+        this.responseUtils = responseUtils;
+    }
 
-    @Autowired
-    private UserRepository userRepository;
-
-
-    @Transactional
-    public IncomeResponse createIncome(String email,@Valid CreateIncomeRequest request){
+    public IncomeResponse createIncome(CreateIncomeRequest request){
+        String email = responseUtils.getCurrentUserEmail();
 
         UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Unauthorized"));
+                .orElseThrow(()-> new AuthenticationException("Unauthorized") {});
 
         Income income = new Income();
         income.setAmount(request.getAmount());
         income.setCategory(request.getCategory());
-        income.setCreatedAt(LocalDateTime.now());
         income.setDescription(request.getDescription());
         income.setUser(user);
         incomeRepository.save(income);
 
-        return toIncomeResponse(income);
+        return responseUtils.toIncomeResponse(income);
     }
 
-    @Transactional(readOnly = true)
-    public IncomeResponse getIncome(String email,String incomeId){
+    public IncomeResponse getIncome(String incomeId){
+        String email = responseUtils.getCurrentUserEmail();
+
         UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Unauthorized"));
+                .orElseThrow(()-> new AuthenticationException("Unauthorized") {});
 
         Income income = incomeRepository.findByUserAndIncomeId(user,incomeId)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND,"income not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("Income dengan id " + incomeId + " tidak ditemukan"));
 
-        return toIncomeResponse(income);
+        return responseUtils.toIncomeResponse(income);
     }
 
-    @Transactional
-    public Page<IncomeResponse> listIncome(String email,@Valid ListIncomeRequest request){
+    public Page<IncomeResponse> listIncome(ListIncomeRequest request) {
+        String email = responseUtils.getCurrentUserEmail();
+
         UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Unauthorized"));
+                .orElseThrow(() -> new AuthenticationException("Unauthorized") {});
 
-        Specification<Income> specification = (root, query, criteriaBuilder) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(criteriaBuilder.equal(root.get("user"),user));
-
-            if (Objects.nonNull(request.getCategory())){
-                predicates.add(criteriaBuilder.or(
-                    criteriaBuilder.like(root.get("category"),"%" + request.getCategory() + "%")
-                ));
-            }
-
-            return query.where(predicates.toArray(new Predicate[]{})).getRestriction();
-        };
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        Page<Income> incomes = incomeRepository.findAll(specification,pageable);
-        List<IncomeResponse> incomeResponses = incomes.getContent().stream()
-                .map(this::toIncomeResponse)
-                .toList();
 
-        return new PageImpl<>(incomeResponses,pageable,incomes.getTotalElements());
+        Page<Income> incomes;
+        if (request.getCategory() != null) {
+            incomes = incomeRepository.findByUserAndCategoryContaining(
+                    user,
+                    request.getCategory(),
+                    pageable
+            );
+        } else {
+            incomes = incomeRepository.findByUser(user, pageable);
+        }
+
+        return incomes.map(responseUtils::toIncomeResponse);
     }
 
-    @Transactional
-    public IncomeResponse editIncome(String email, String incomeId,@Valid UpdateIncomeRequest request){
+    public IncomeResponse editIncome(String incomeId,UpdateIncomeRequest request){
+        String email = responseUtils.getCurrentUserEmail();
 
         UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Unauthorized"));
+                .orElseThrow(()-> new AuthenticationException("Unauthorized") {});
         Income income = incomeRepository.findByUserAndIncomeId(user,incomeId)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND,"income not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("Income dengan id " + incomeId + " tidak ditemukan"));
 
         if (Objects.nonNull(request.getAmount())){
             income.setAmount(request.getAmount());
@@ -112,27 +103,18 @@ public class IncomeServiceImpl implements IncomeService {
 
         incomeRepository.save(income);
 
-        return toIncomeResponse(income);
+        return responseUtils.toIncomeResponse(income);
     }
 
-    @Transactional
-    public void deleteIncome(String email,String incomeId){
+    public void deleteIncome(String incomeId){
+        String email = responseUtils.getCurrentUserEmail();
+
         UserEntity user = userRepository.findByEmail(email)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Unauthorized"));
+                .orElseThrow(()-> new AuthenticationException("Unauthorized") {});
         Income income = incomeRepository.findByUserAndIncomeId(user,incomeId)
-                .orElseThrow(()-> new ResponseStatusException(HttpStatus.NOT_FOUND,"income not found"));
+                .orElseThrow(()-> new ResourceNotFoundException("Income dengan id " + incomeId + " tidak ditemukan"));
 
         incomeRepository.delete(income);
     }
 
-    // Method Helper
-    private IncomeResponse toIncomeResponse(Income income){
-        return IncomeResponse.builder()
-                .incomeId(income.getIncomeId())
-                .amount(income.getAmount())
-                .category(income.getCategory())
-                .createdAt(income.getCreatedAt())
-                .description(income.getDescription())
-                .build();
-    }
 }

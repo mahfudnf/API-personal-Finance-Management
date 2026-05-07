@@ -3,12 +3,13 @@ package com.personalfinance.management.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.personalfinance.management.entity.UserEntity;
-import com.personalfinance.management.model.user.RegisterUserRequest;
-import com.personalfinance.management.model.user.UpdateUserRequest;
-import com.personalfinance.management.model.user.UserResponse;
-import com.personalfinance.management.model.WebResponse;
+import com.personalfinance.management.model.request.RegisterUserRequest;
+import com.personalfinance.management.model.request.UpdateUserRequest;
+import com.personalfinance.management.model.response.ErrorResponse;
+import com.personalfinance.management.model.response.UserResponse;
+import com.personalfinance.management.model.response.WebResponse;
 import com.personalfinance.management.repository.UserRepository;
-import com.personalfinance.management.security.JwtUtil;
+import com.personalfinance.management.security.service.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +28,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 public class UserControllerTest {
-
     @Autowired
     private MockMvc mockMvc;
 
@@ -41,7 +41,7 @@ public class UserControllerTest {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private JwtUtil jwtUtil;
+    private JwtService jwtService;
 
     @BeforeEach
     void setUp(){
@@ -51,8 +51,9 @@ public class UserControllerTest {
     @Test
     void testRegisterSuccess() throws Exception{
         RegisterUserRequest request = new RegisterUserRequest();
-        request.setName("joko");
-        request.setEmail("joko@gmail.com");
+        request.setFirstName("mahfud");
+        request.setLastName("nur");
+        request.setEmail("mahfud@gmail.com");
         request.setPassword("abc123");
 
         mockMvc.perform(
@@ -61,9 +62,10 @@ public class UserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
         ).andExpectAll(
-                status().isOk()
+                status().isCreated()
         ).andDo(result -> {
-            WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
+            WebResponse<String> response = objectMapper
+                    .readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
             });
             assertEquals("OK",response.getData());
         });
@@ -72,7 +74,8 @@ public class UserControllerTest {
     @Test
     void testRegisterBadRequest() throws Exception{
         RegisterUserRequest request = new RegisterUserRequest();
-        request.setName("");
+        request.setFirstName("");
+        request.setLastName("");
         request.setEmail("");
         request.setPassword("");
 
@@ -84,8 +87,9 @@ public class UserControllerTest {
         ).andExpectAll(
                 status().isBadRequest()
         ).andDo(result -> {
-            WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
-            });
+            ErrorResponse response = objectMapper
+                    .readValue(result.getResponse().getContentAsString(), ErrorResponse.class);
+
             assertNotNull(response.getErrors());
         });
     }
@@ -93,14 +97,16 @@ public class UserControllerTest {
     @Test
     void testRegisterDuplicated() throws Exception{
         UserEntity user = new UserEntity();
-        user.setName("joko");
-        user.setEmail("joko@gmail.com");
+        user.setFirstName("mahfud");
+        user.setLastName("nur");
+        user.setEmail("mahfud@gmail.com");
         user.setPassword(passwordEncoder.encode("abc123"));
         userRepository.save(user);
 
         RegisterUserRequest request = new RegisterUserRequest();
-        request.setName("joko");
-        request.setEmail("joko@gmail.com");
+        request.setFirstName("mahfud");
+        request.setLastName("nur");
+        request.setEmail("mahfud@gmail.com");
         request.setPassword("abc123");
 
         mockMvc.perform(
@@ -111,14 +117,16 @@ public class UserControllerTest {
         ).andExpectAll(
                 status().isBadRequest()
         ).andDo(result -> {
-            WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
-            });
+            ErrorResponse response = objectMapper
+                    .readValue(result.getResponse().getContentAsString(), ErrorResponse.class);
+
             assertNotNull(response.getErrors());
         });
     }
 
     @Test
     void getUserUnauthorized() throws Exception{
+
         mockMvc.perform(
                 post("/api/users/current")
                         .accept(MediaType.APPLICATION_JSON)
@@ -126,8 +134,9 @@ public class UserControllerTest {
         ).andExpectAll(
                 status().isUnauthorized()
         ).andDo(result -> {
-            WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
-            });
+            ErrorResponse response = objectMapper
+                    .readValue(result.getResponse().getContentAsString(), ErrorResponse.class);
+
             assertNotNull(response.getErrors());
         });
     }
@@ -140,8 +149,9 @@ public class UserControllerTest {
         ).andExpectAll(
                 status().isUnauthorized()
         ).andDo(result -> {
-            WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
-            });
+            ErrorResponse response = objectMapper
+                    .readValue(result.getResponse().getContentAsString(), ErrorResponse.class);
+
             assertNotNull(response.getErrors());
         });
     }
@@ -149,12 +159,13 @@ public class UserControllerTest {
     @Test
     void getUserSuccess() throws Exception{
         UserEntity user = new UserEntity();
-        user.setName("joko");
-        user.setEmail("joko@gmail.com");
+        user.setFirstName("mahfud");
+        user.setLastName("nur");
+        user.setEmail("mahfud@gmail.com");
         user.setPassword(passwordEncoder.encode("abc123"));
         userRepository.save(user);
 
-        String token = jwtUtil.generateToken(user.getEmail());
+        String token = jwtService.generateToken(user);
 
         mockMvc.perform(
                 get("/api/users/current")
@@ -165,31 +176,33 @@ public class UserControllerTest {
         ).andDo(result -> {
             WebResponse<UserResponse> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
             });
-            assertNull(response.getErrors());
-            assertEquals("joko",response.getData().getName());
-            assertEquals("joko@gmail.com",response.getData().getEmail());
+            assertEquals("mahfud", response.getData().getFirstName());
+            assertEquals("nur", response.getData().getLastName());
+            assertEquals("mahfud@gmail.com",response.getData().getEmail());
         });
     }
 
     @Test
     void getUserTokenExpired() throws Exception{
         UserEntity user = new UserEntity();
-        user.setName("joko");
-        user.setEmail("joko@gmail.com");
+        user.setFirstName("mahfud");
+        user.setLastName("nur");
+        user.setEmail("aaa@gmail.com");
         user.setPassword(passwordEncoder.encode("abc123"));
         userRepository.save(user);
 
-        String token = jwtUtil.generateToken(user.getEmail(),-1000);
+        String expiredToken = jwtService.testGenerateExpiredToken(user);
 
         mockMvc.perform(
                 get("/api/users/current")
                         .accept(MediaType.APPLICATION_JSON)
-                        .header("Authorization", "Bearer " + token)
+                        .header("Authorization", "Bearer " + expiredToken)
         ).andExpectAll(
                 status().isUnauthorized()
         ).andDo(result -> {
-            WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
-            });
+            ErrorResponse response = objectMapper
+                    .readValue(result.getResponse().getContentAsString(), ErrorResponse.class);
+
             assertNotNull(response.getErrors());
         });
     }
@@ -206,8 +219,9 @@ public class UserControllerTest {
         ).andExpectAll(
                 status().isUnauthorized()
         ).andDo(result -> {
-            WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
-            });
+            ErrorResponse response = objectMapper
+                    .readValue(result.getResponse().getContentAsString(), ErrorResponse.class);
+
             assertNotNull(response.getErrors());
         });
     }
@@ -215,16 +229,18 @@ public class UserControllerTest {
     @Test
     void updateUserSuccess()throws Exception{
         UserEntity user = new UserEntity();
-        user.setName("joko");
-        user.setEmail("joko@gmail.com");
+        user.setFirstName("mahfud");
+        user.setLastName("nur");
+        user.setEmail("bbb@gmail.com");
         user.setPassword(passwordEncoder.encode("abc123"));
         userRepository.save(user);
 
         UpdateUserRequest request = new UpdateUserRequest();
-        request.setName("asep");
+        request.setFirstName("budi");
+        request.setLastName("tabuti");
         request.setPassword("xyz123");
 
-        String token = jwtUtil.generateToken(user.getEmail());
+        String token = jwtService.generateToken(user);
 
         mockMvc.perform(
                 patch("/api/users/current")
@@ -237,11 +253,11 @@ public class UserControllerTest {
         ).andDo(result -> {
             WebResponse<UserResponse> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
             });
-            assertNull(response.getErrors());
-            assertEquals("asep", response.getData().getName());
+            assertEquals("budi",response.getData().getFirstName());
+            assertEquals("tabuti",response.getData().getLastName());
         });
 
-        UserEntity userDb = userRepository.findByEmail("joko@gmail.com").orElse(null);
+        UserEntity userDb = userRepository.findByEmail("bbb@gmail.com").orElse(null);
         assertNotNull(userDb);
         System.out.println(userDb.getPassword());
         assertTrue(passwordEncoder.matches("xyz123",userDb.getPassword()));

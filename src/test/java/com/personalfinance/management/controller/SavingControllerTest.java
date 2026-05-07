@@ -5,17 +5,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.personalfinance.management.entity.Saving;
 import com.personalfinance.management.entity.SavingTransaction;
 import com.personalfinance.management.entity.UserEntity;
-import com.personalfinance.management.model.WebResponse;
-import com.personalfinance.management.model.expense.CreateExpenseRequest;
-import com.personalfinance.management.model.income.IncomeResponse;
-import com.personalfinance.management.model.saving.CreateSavingRequest;
-import com.personalfinance.management.model.saving.CreateSavingTransactionRequest;
-import com.personalfinance.management.model.saving.SavingProgressResponse;
-import com.personalfinance.management.model.saving.SavingResponse;
+import com.personalfinance.management.model.response.ErrorResponse;
+import com.personalfinance.management.model.response.WebResponse;
+import com.personalfinance.management.model.request.CreateSavingRequest;
+import com.personalfinance.management.model.request.CreateSavingTransactionRequest;
+import com.personalfinance.management.model.response.SavingProgressResponse;
+import com.personalfinance.management.model.response.SavingResponse;
 import com.personalfinance.management.repository.SavingRepository;
 import com.personalfinance.management.repository.SavingTransactionRepository;
 import com.personalfinance.management.repository.UserRepository;
-import com.personalfinance.management.security.JwtUtil;
+import com.personalfinance.management.security.service.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,9 +30,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.test.web.servlet.MockMvcBuilder.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 
@@ -61,7 +58,7 @@ public class SavingControllerTest {
     private PasswordEncoder passwordEncoder;
 
     @Autowired
-    private JwtUtil jwtUtil;
+    private JwtService jwtService;
 
     @BeforeEach
     void setUp(){
@@ -70,43 +67,43 @@ public class SavingControllerTest {
     }
 
     // Method Helper
-    private String createUserAndGetToken(){
+    private String createUserAndGetToken(String email){
         UserEntity user = new UserEntity();
-        user.setName("joko");
-        user.setEmail("joko@gmail.com");
+        user.setFirstName("mahfud");
+        user.setLastName("nur");
+        user.setEmail(email);
         user.setPassword(passwordEncoder.encode("abc123"));
         userRepository.save(user);
 
-        return jwtUtil.generateToken(user.getEmail());
+        return jwtService.generateToken(user);
     }
 
     private Saving createSaving(UserEntity user){
         Saving saving = new Saving();
         saving.setNameSaving("tabungan umroh");
-        saving.setTargetAmount(50000000L);
-        saving.setDeadline(LocalDate.parse("2026-12-01"));
-        saving.setCreatedAt(LocalDateTime.now());
+        saving.setTargetSaving(50_000_000L);
+        saving.setDeadlineSaving(LocalDate.parse("2026-12-01"));
         saving.setUser(user);
 
         return savingRepository.save(saving);
     }
 
-    private SavingTransaction createSavingTransaction(Saving saving){
+    private SavingTransaction createSavingTransaction(Saving saving,UserEntity user){
         SavingTransaction transaction = new SavingTransaction();
-        transaction.setAmount(10000000L);
-        transaction.setCreatedAt(LocalDateTime.now());
+        transaction.setTransactionAmount(10_000_000L);
         transaction.setSaving(saving);
+        transaction.setUser(user);
 
         return savingTransactionRepository.save(transaction);
     }
 
     @Test
     void createSavingBadRequest() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("aaa@gmail.com");
 
         CreateSavingRequest request = new CreateSavingRequest();
         request.setNameSaving(null);
-        request.setTargetAmount(null);
+        request.setTargetSaving(null);
 
         mockMvc.perform(
                 post("/api/savings")
@@ -117,20 +114,20 @@ public class SavingControllerTest {
         ).andExpectAll(
                 status().isBadRequest()
         ).andDo(result -> {
-            WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
-            });
+            ErrorResponse response = objectMapper
+                    .readValue(result.getResponse().getContentAsString(), ErrorResponse.class);
             assertNotNull(response.getErrors());
         });
     }
 
     @Test
     void createSavingSuccess() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("mahfud@gmail.com");
 
         CreateSavingRequest request = new CreateSavingRequest();
         request.setNameSaving("tabungan umroh");
-        request.setTargetAmount(50000000L);
-        request.setDeadline(LocalDate.parse("2026-12-01"));
+        request.setTargetSaving(50_000_000L);
+        request.setDeadlineSaving(LocalDate.parse("2026-12-01"));
 
         mockMvc.perform(
                 post("/api/savings")
@@ -139,16 +136,19 @@ public class SavingControllerTest {
                         .content(objectMapper.writeValueAsString(request))
                         .header("Authorization", "Bearer " + token)
         ).andExpectAll(
-                status().isOk()
+                status().isCreated()
         ).andDo(result -> {
             WebResponse<SavingResponse> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
             });
-            assertNull(response.getErrors());
             assertNotNull(response.getData().getSavingId());
+            assertNotNull(response.getData().getUserId());
             assertEquals(request.getNameSaving(),response.getData().getNameSaving());
-            assertEquals(request.getTargetAmount(),response.getData().getTargetAmount());
-            assertEquals(request.getDeadline(),response.getData().getDeadline());
+            assertEquals(request.getTargetSaving(),response.getData().getTargetSaving());
+            assertEquals(request.getDeadlineSaving(),response.getData().getDeadlineSaving());
+            assertNotNull(response.getData().getCurrentAmount());
+            assertNotNull(response.getData().getStatus());
             assertNotNull(response.getData().getCreatedAt());
+            assertNotNull(response.getData().getUpdatedAt());
 
             assertTrue(savingRepository.existsById(response.getData().getSavingId()));
         });
@@ -156,7 +156,7 @@ public class SavingControllerTest {
 
     @Test
     void getSavingNotFound() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("bbb@gmail.com");
 
         mockMvc.perform(
                 get("/api/savings/244551666177")
@@ -166,17 +166,17 @@ public class SavingControllerTest {
         ).andExpectAll(
                 status().isNotFound()
         ).andDo(result -> {
-            WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
-            });
+            ErrorResponse response = objectMapper
+                    .readValue(result.getResponse().getContentAsString(), ErrorResponse.class);
             assertNotNull(response.getErrors());
         });
     }
 
     @Test
     void getSavingSuccess() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("ccc@gmail.com");
 
-        UserEntity user = userRepository.findByEmail("joko@gmail.com").orElseThrow();
+        UserEntity user = userRepository.findByEmail("ccc@gmail.com").orElseThrow();
         Saving saving = createSaving(user);
         String id = saving.getSavingId();
 
@@ -190,25 +190,28 @@ public class SavingControllerTest {
         ).andDo(result -> {
             WebResponse<SavingResponse> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
             });
-            assertNull(response.getErrors());
             assertNotNull(response.getData().getSavingId());
+            assertNotNull(response.getData().getUserId());
             assertEquals("tabungan umroh",response.getData().getNameSaving());
-            assertEquals(50000000L,response.getData().getTargetAmount());
-            assertNotNull(response.getData().getDeadline());
+            assertEquals(50_000_000L,response.getData().getTargetSaving());
+            assertNotNull(response.getData().getDeadlineSaving());
+            assertNotNull(response.getData().getCurrentAmount());
+            assertNotNull(response.getData().getStatus());
             assertNotNull(response.getData().getCreatedAt());
+            assertNotNull(response.getData().getUpdatedAt());
         });
     }
 
     @Test
     void createSavingTransactionBadRequest() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("ddd@gmail.com");
 
-        UserEntity user = userRepository.findByEmail("joko@gmail.com").orElseThrow();
+        UserEntity user = userRepository.findByEmail("ddd@gmail.com").orElseThrow();
         Saving saving = createSaving(user);
         String id = saving.getSavingId();
 
         CreateSavingTransactionRequest request = new CreateSavingTransactionRequest();
-        request.setAmount(null);
+        request.setTransactionAmount(null);
 
         mockMvc.perform(
                 post("/api/savings/"+id+"/saving_transaction")
@@ -219,22 +222,22 @@ public class SavingControllerTest {
         ).andExpectAll(
                 status().isBadRequest()
         ).andDo(result -> {
-            WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
-            });
+            ErrorResponse response = objectMapper
+                    .readValue(result.getResponse().getContentAsString(), ErrorResponse.class);
             assertNotNull(response.getErrors());
         });
     }
 
     @Test
     void createSavingTransactionSuccess() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("eee@gmail.com");
 
-        UserEntity user = userRepository.findByEmail("joko@gmail.com").orElseThrow();
+        UserEntity user = userRepository.findByEmail("eee@gmail.com").orElseThrow();
         Saving saving = createSaving(user);
         String id = saving.getSavingId();
 
         CreateSavingTransactionRequest request = new CreateSavingTransactionRequest();
-        request.setAmount(10000000L);
+        request.setTransactionAmount(10_000_000L);
 
         mockMvc.perform(
                 post("/api/savings/"+id+"/saving_transaction")
@@ -243,18 +246,18 @@ public class SavingControllerTest {
                         .content(objectMapper.writeValueAsString(request))
                         .header("Authorization", "Bearer " + token)
         ).andExpectAll(
-                status().isOk()
+                status().isCreated()
         ).andDo(result -> {
             WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
             });
-            assertNull(response.getErrors());
+
             assertEquals("OK",response.getData());
         });
     }
 
     @Test
     void getSavingProgressNotFound() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("fff@gmail.com");
 
         mockMvc.perform(
                 get("/api/savings/244551666177/saving_transaction/progress")
@@ -264,22 +267,22 @@ public class SavingControllerTest {
         ).andExpectAll(
                 status().isNotFound()
         ).andDo(result -> {
-            WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
-            });
+            ErrorResponse response = objectMapper
+                    .readValue(result.getResponse().getContentAsString(), ErrorResponse.class);
             assertNotNull(response.getErrors());
         });
     }
 
     @Test
     void getSavingProgressSuccess() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("ggg@gmail.com");
 
-        UserEntity user = userRepository.findByEmail("joko@gmail.com").orElseThrow();
+        UserEntity user = userRepository.findByEmail("ggg@gmail.com").orElseThrow();
         Saving saving = createSaving(user);
         String id = saving.getSavingId();
 
-        SavingTransaction transaction1 = createSavingTransaction(saving);
-        SavingTransaction transaction2 = createSavingTransaction(saving);
+        SavingTransaction transaction1 = createSavingTransaction(saving,user);
+        SavingTransaction transaction2 = createSavingTransaction(saving,user);
 
 
         mockMvc.perform(
@@ -292,19 +295,20 @@ public class SavingControllerTest {
         ).andDo(result -> {
             WebResponse<SavingProgressResponse> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
             });
-            assertNull(response.getErrors());
             assertNotNull(response.getData().getSavingId());
+            assertNotNull(response.getData().getUserId());
             assertEquals("tabungan umroh",response.getData().getNameSaving());
-            assertEquals(50000000L,response.getData().getTargetAmount());
-            assertEquals(20000000L,response.getData().getCurrentBalance());
-            assertEquals(30000000L,response.getData().getRemainingAmount());
+            assertEquals(50_000_000L,response.getData().getTargetSaving());
+            assertEquals(20_000_000L,response.getData().getCurrentAmount());
+            assertNotNull(response.getData().getStatus());
             assertEquals(40,response.getData().getProgressPercentage());
+            assertEquals(30_000_000L,response.getData().getRemainingAmount());
         });
     }
 
     @Test
     void listSavingNotFound() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("hhh@gmail.com");
 
         mockMvc.perform(
                 get("/api/savings")
@@ -316,7 +320,6 @@ public class SavingControllerTest {
         ).andDo(result -> {
             WebResponse<List<SavingResponse>> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
             });
-            assertNull(response.getErrors());
             assertEquals(0,response.getData().size());
             assertEquals(0,response.getPaging().getTotalPage());
             assertEquals(0,response.getPaging().getCurrentPage());
@@ -326,15 +329,14 @@ public class SavingControllerTest {
 
     @Test
     void listSavingSuccess() throws Exception{
-        String token = createUserAndGetToken();
-        UserEntity user = userRepository.findByEmail("joko@gmail.com").orElseThrow();
+        String token = createUserAndGetToken("iii@gmail.com");
+        UserEntity user = userRepository.findByEmail("iii@gmail.com").orElseThrow();
 
         for (int i=0 ; i<100 ; i++){
             Saving saving = new Saving();
             saving.setNameSaving("tabungan haji" + i);
-            saving.setTargetAmount(50000000L);
-            saving.setDeadline(LocalDate.parse("2026-12-01"));
-            saving.setCreatedAt(LocalDateTime.now());
+            saving.setTargetSaving(50_000_000L);
+            saving.setDeadlineSaving(LocalDate.parse("2026-12-01"));
             saving.setUser(user);
             savingRepository.save(saving);
         }
@@ -360,16 +362,16 @@ public class SavingControllerTest {
 
     @Test
     void editSavingBadRequest() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("jjj@gmail.com");
 
-        UserEntity user = userRepository.findByEmail("joko@gmail.com").orElseThrow();
+        UserEntity user = userRepository.findByEmail("jjj@gmail.com").orElseThrow();
         Saving saving = createSaving(user);
         String id = saving.getSavingId();
 
         CreateSavingRequest request = new CreateSavingRequest();
         request.setNameSaving(null);
-        request.setTargetAmount(null);
-        request.setDeadline(LocalDate.parse("2026-12-01"));
+        request.setTargetSaving(null);
+        request.setDeadlineSaving(LocalDate.parse("2026-12-01"));
 
         mockMvc.perform(
                 put("/api/savings/" + id)
@@ -380,24 +382,24 @@ public class SavingControllerTest {
         ).andExpectAll(
                 status().isBadRequest()
         ).andDo(result -> {
-            WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
-            });
+            ErrorResponse response = objectMapper
+                    .readValue(result.getResponse().getContentAsString(), ErrorResponse.class);
             assertNotNull(response.getErrors());
         });
     }
 
     @Test
     void editSavingSuccess() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("kkk@gmail.com");
 
-        UserEntity user = userRepository.findByEmail("joko@gmail.com").orElseThrow();
+        UserEntity user = userRepository.findByEmail("kkk@gmail.com").orElseThrow();
         Saving saving = createSaving(user);
         String id = saving.getSavingId();
 
         CreateSavingRequest request = new CreateSavingRequest();
         request.setNameSaving("beli motor");
-        request.setTargetAmount(30000000L);
-        request.setDeadline(LocalDate.parse("2026-12-01"));
+        request.setTargetSaving(30_000_000L);
+        request.setDeadlineSaving(LocalDate.parse("2026-12-01"));
 
         mockMvc.perform(
                 put("/api/savings/" + id)
@@ -410,12 +412,15 @@ public class SavingControllerTest {
         ).andDo(result -> {
             WebResponse<SavingResponse> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
             });
-            assertNull(response.getErrors());
             assertNotNull(response.getData().getSavingId());
+            assertNotNull(response.getData().getUserId());
             assertEquals(request.getNameSaving(),response.getData().getNameSaving());
-            assertEquals(request.getTargetAmount(),response.getData().getTargetAmount());
-            assertEquals(request.getDeadline(),response.getData().getDeadline());
+            assertEquals(request.getTargetSaving(),response.getData().getTargetSaving());
+            assertEquals(request.getDeadlineSaving(),response.getData().getDeadlineSaving());
+            assertNotNull(response.getData().getCurrentAmount());
+            assertNotNull(response.getData().getStatus());
             assertNotNull(response.getData().getCreatedAt());
+            assertNotNull(response.getData().getUpdatedAt());
 
             assertTrue(savingRepository.existsById(response.getData().getSavingId()));
         });
@@ -423,7 +428,7 @@ public class SavingControllerTest {
 
     @Test
     void deleteSavingNotFound() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("lll@gmail.com");
 
         mockMvc.perform(
                 delete("/api/savings/15527729828")
@@ -433,17 +438,17 @@ public class SavingControllerTest {
         ).andExpectAll(
                 status().isNotFound()
         ).andDo(result -> {
-            WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
-            });
+            ErrorResponse response = objectMapper
+                    .readValue(result.getResponse().getContentAsString(), ErrorResponse.class);
             assertNotNull(response.getErrors());
         });
     }
 
     @Test
     void deleteSavingSuccess() throws Exception{
-        String token = createUserAndGetToken();
+        String token = createUserAndGetToken("mmm@gmail.com");
 
-        UserEntity user = userRepository.findByEmail("joko@gmail.com").orElseThrow();
+        UserEntity user = userRepository.findByEmail("mmm@gmail.com").orElseThrow();
         Saving saving = createSaving(user);
         String id = saving.getSavingId();
 
@@ -457,7 +462,6 @@ public class SavingControllerTest {
         ).andDo(result -> {
             WebResponse<String> response = objectMapper.readValue(result.getResponse().getContentAsString(), new TypeReference<>() {
             });
-            assertNull(response.getErrors());
             assertEquals("OK",response.getData());
         });
     }

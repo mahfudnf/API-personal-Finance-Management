@@ -1,53 +1,41 @@
 
 # Dashboard API Spec
 
-## Get User Finances
+## Get Dashboard
+
 Endpoint : GET /api/dashboard
 
 Request Header :
 - Authorization: Bearer <TOKEN>
 
-Response Body(Success) :
+Description :
+Mengambil ringkasan data keuangan user yang sedang login,
+meliputi total income, total expense, saldo saat ini, spending limit,
+dan progress tabungan.
+
+---
+
+Response Body(Success 200)
+
 ```json
 {
-  "data" : {
-    "totalIncome" : 5000000, // hasil penjumlahan all income
-    "totalExpense" : 1000000, // hasil penjumlahan all expense
-    "currentBalance" : 4000000 // hasil totalIncome - totalExpense 
+  "data": {
+    "totalIncome": 10000000,
+    "totalExpense": 4000000,
+    "currentBalance": 6000000,
+    "spendingLimit": 5000000,
+    "savingProgress": [
+      {
+        "savingId": "1234451455156",
+        "userId": "233415516166",
+        "nameSaving": "Tabungan Rumah",
+        "targetSaving": 20000000,
+        "currentAmount": 5000000,
+        "remainingAmount": 15000000,
+        "progressPercentage": 25.0
+      }
+    ]
   }
-}
-```
-
-## Get User Saving Progress
-Endpoint : GET /api/dashboard/savings/saving_transaction/progress
-
-Request Header :
-- Authorization: Bearer <TOKEN>
-
-Response Body(Success) :
-
-- Hasil penjumlahan real time proses saving dalam bentuk grafik
-
-```json
-{
-  "data": [
-    {
-      "savingId": 1,
-      "nameSaving": "Rumah",
-      "targetAmount": 100000000,
-      "currentBalance": 30000000,
-      "progressPercentage": 30,
-      "remainingAmount": 70000000
-    },
-    {
-      "savingId": 2,
-      "nameSaving": "Motor",
-      "targetAmount": 20000000,
-      "currentBalance": 5000000,
-      "progressPercentage": 25,
-      "remainingAmount": 15000000
-    }
-  ]
 }
 ```
 

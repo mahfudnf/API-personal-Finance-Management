@@ -9,12 +9,13 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface SavingTransactionRepository extends JpaRepository<SavingTransaction,String>, JpaSpecificationExecutor<SavingTransaction> {
+public interface SavingTransactionRepository extends
+        JpaRepository<SavingTransaction,String>, JpaSpecificationExecutor<SavingTransaction> {
 
     @Query("""
-       SELECT SUM(st.amount) 
-       FROM SavingTransaction st 
-       WHERE st.saving.savingId = :savingId
-       """)
+   SELECT COALESCE(SUM(st.transactionAmount), 0)
+   FROM SavingTransaction st
+   WHERE st.saving.savingId = :savingId
+   """)
     Long sumBySavingId(@Param("savingId") String savingId);
 }
