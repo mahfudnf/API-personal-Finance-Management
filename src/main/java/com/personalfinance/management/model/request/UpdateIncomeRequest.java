@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class UpdateIncomeRequest {
-    @Positive(message = "Amount must be greater than 0")
+    @Positive(message = "Jumlah harus lebih besar dari 0")
     private Long amount;
 
     @Size(max = 225)

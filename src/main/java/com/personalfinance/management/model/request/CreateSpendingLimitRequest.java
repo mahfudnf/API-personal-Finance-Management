@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class CreateSpendingLimitRequest {
     @NotNull
-    @Positive(message = "Amount must be greater than 0")
+    @Positive(message = "Jumlah harus lebih besar dari 0")
     private Long limitValue;
 
     @NotNull
